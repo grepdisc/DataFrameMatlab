@@ -18,8 +18,8 @@ function S = DFkeeprow(S,rowIdx,isExclude)
 %
 %     Hy Carrinski
 %     Broad Institute
-%     Based on selectrows
 
+assert(isstruct(S) && isscalar(S),'ccbr:BadInput', 'S must be a data frame.'); 
 if nargin < 3 || isempty(isExclude)
     isExclude = false;
 end

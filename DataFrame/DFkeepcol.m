@@ -18,12 +18,9 @@ function S = DFkeepcol(S,fields,isReorder)
 %
 %     Hy Carrinski
 %     Broad Institute
-%     Based on keepField September 27, 2006
 
 % Error check
-if ~isa(S,'struct') 
-    error('ccbr:BadInput', 'S must be a data frame.'); 
-end
+assert(isstruct(S) && isscalar(S),'ccbr:BadInput', 'S must be a data frame.'); 
 if ischar(fields)
    fields = cellstr(fields); 
 elseif isnumeric(fields)
@@ -38,7 +35,7 @@ if nargin < 3
     isReorder = false;
 end
 
-% get fieldnames of struct
+% get fieldnames of data frame
 allFields    = fieldnames(S);
 removeFields = allFields(not(ismember(allFields,fields)));
 

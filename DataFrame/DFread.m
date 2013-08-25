@@ -210,11 +210,18 @@ if isFormat
     header = header(headerIdx);
 end
 
+pos = ftell(fid);
 if isCSV && isColNames
     formats = csvformatreplace(formats);
     rawData = textscan(fid, formats, maxLines,'delimiter', ',', 'headerlines', 0);
 elseif not(isRobust) && isColNames
-    rawData = textscan(fid, formats, maxLines,'delimiter', '\t', 'headerlines', 0);
+    try 
+        rawData = textscan(fid, formats, maxLines,'delimiter', '\t', 'headerlines', 0);
+    catch
+        fseek(fid,pos,-1);
+        rawData = textscan(fid, formats, maxLines,'delimiter', '\t', ...
+            'headerlines', 0, 'BufSize',2^16-1);
+    end
 else
     frewind(fid);
     rawData = lineread(fid, formats, numel(header), numCommLines,robustDelim,maxLines);
@@ -367,14 +374,20 @@ function [varargout] = findformat(unknownFormats,fid,readLength,fields,isCSV)
     % find formats and return a comma separated list
     % fields is likely "header"
     % assumes file is at correct start place (just below header row)
-
+    pos = ftell(fid);
     if isCSV
         unknownFormats = csvformatreplace(unknownFormats);
         sampleData = textscan(fid,unknownFormats,readLength,...
             'delimiter',',','headerlines',0);
     else
-        sampleData = textscan(fid,unknownFormats,readLength,...
-            'delimiter','\t','headerlines',0);
+        try 
+            sampleData = textscan(fid,unknownFormats,readLength,...
+                'delimiter','\t','headerlines',0);
+        catch
+            fseek(fid,pos,-1);
+            sampleData = textscan(fid,unknownFormats,readLength,...
+                'delimiter','\t','headerlines',0,'BufSize',2^16-1);
+        end
     end
     Data = convertformats(sampleData,fields);
     cellFmt = cell(1,numel(fields));
@@ -462,7 +475,7 @@ function [header origHeader]  = makeheader(fid,readLength,numCommLines,robustDel
     frewind(fid) % Go to file beginning
     colsPerLine = zeros(readLength,1);
     linedata    = textscan(fid, '%s', readLength, 'delimiter', '\n', ...
-                'whitespace', '','headerlines',numCommLines);
+                'whitespace', '','headerlines',numCommLines,'BufSize',2^16-1);
     for i = 1:numel(linedata{1})
         if not(isempty(linedata{1}{i}))
             colsPerLine(i) = numel(strsplit(robustDelim, linedata{1}{i}));
@@ -489,7 +502,7 @@ function rawData = lineread(fid, formats, numFields, numCommLines,robustDelim,ma
 %      rawData = lineread(fid, formats, numFields, numCommLines,robustDelim,maxLines)
 %      currently ignores "formats"
     linedata   = textscan(fid, '%s', maxLines, 'delimiter', '\n', ...
-                 'whitespace', '', 'headerlines', numCommLines);
+                 'whitespace', '', 'headerlines', numCommLines,'BufSize',2^16-1);
     rawArray    = cell(numel(linedata{1}), numFields);
     rawArray(:) = {''};
     for i = 1:numel(linedata{1})

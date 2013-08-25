@@ -45,8 +45,8 @@ end
 for i = 1:numSets
     currSets     = numItems;         % init temporary variable
     currDims     = ones(1,numSets);  % init temporary variable
-    if ( numSets == 1 )
-        currDims = [ currDims 1 ];   % account for single set case
+    if numSets == 1
+        currDims = [currDims, 1];   % account for single set case
     end
     currSets(i)  = 1;
     currDims(i)  = numItems(i);

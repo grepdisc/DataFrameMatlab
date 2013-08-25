@@ -47,7 +47,6 @@ if nargin >= 4 && iscellstr(matchNames)
    S2          = DFrenamecol(S2,matchNames,filtNames);
 end
 
-% This next line could be more efficient it S2 could be indexed first
 [ S1 failIdx ] = DFjoin(S1,S2,filtNames,{},[],'first');
   S1           = DFkeeprow(S1,failIdx,true);
 

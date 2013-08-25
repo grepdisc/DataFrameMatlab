@@ -1,8 +1,8 @@
-function colIdx  = num2colIdx(num)
+function colIdx  = num2colidx(num)
 % NUM2COLIDX
 %       generates the index from 1 to num as a column vector
 %
-%    colIdx  = num2colIdx(num)
+%    colIdx  = num2colidx(num)
 %
 % parameters
 % ----------------------------------------------------------------

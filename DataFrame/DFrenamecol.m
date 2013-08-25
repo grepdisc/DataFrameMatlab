@@ -19,23 +19,24 @@ function S = DFrenamecol(S,oldfields,newfields)
 %
 %     Hy Carrinski
 %     Broad Institute
-%     Based on renameField November 12, 2008
 
 % Error check
-if ~isa(S,'struct') 
-    error('ccbr:BadInput', 'S must be a data frame.'); 
+assert(isstruct(S) && isscalar(S),'ccbr:BadInput', 'S must be a data frame.'); 
+if nargin < 3 || isempty(oldfields) || isempty(newfields)
+    error('ccbr:BadInput','data frame and old and new field names are required');
 end
+
 if ischar(oldfields)
-   oldfields = cellstr(oldfields); 
-elseif not(iscellstr(oldfields))
-   error('ccbr:BadInput',...
-      'FIELDNAMES must be a string or a cell array of strings.');
+    oldfields = cellstr(oldfields); 
+else
+    assert(iscellstr(oldfields),'ccbr:BadInput',...
+      'fieldnames must be a string or a cell array of strings.');
 end
 if ischar(newfields)
-   newfields = cellstr(newfields); 
-elseif not(iscellstr(newfields))
-   error('ccbr:BadInput',...
-      'FIELDNAMES must be a string or a cell array of strings.');
+    newfields = cellstr(newfields); 
+else
+    assert(iscellstr(newfields),'ccbr:BadInput',...
+      'fieldnames must be a string or a cell array of strings.');
 end
 
 % permit inclusive rename list (absent fields are ignored)
@@ -45,7 +46,7 @@ if nnz(idxMissingFields) > 0
     oldfields(idxMissingFields) = [];
     newfields(idxMissingFields) = [];
     warning('ccbr:ImperfectInput', ...
-        'Certain fields were not renamed, structure changed');
+        'data frame changed, but not all requested fields were renamed');
 end
 
 % ignore any field that is present in the same position of both lists
@@ -58,10 +59,8 @@ end
 % Ensure old fields and new fields have the same number of members
 numOld = numel(oldfields);
 numNew = numel(newfields);
-if not(isequal(numOld,numNew))
-   error('ccbr:BadInput',...
-       'oldfields and newfields must have the same number of elements');
-end
+assert(isequal(numOld,numNew), 'ccbr:BadInput',...
+    'oldfields and newfields must have the same number of elements');
 
 % further checking for unhandled cases
 if any(not(ismember(oldfields,allfields))) || ...
@@ -70,7 +69,7 @@ if any(not(ismember(oldfields,allfields))) || ...
    not(isequal( numel(unique(oldfields)), numOld )) || ...
    not(isequal( numel(unique(newfields)), numNew ))
     warning('ccbr:BadInput', ...
-        'Fields could not be properly renamed, structure unchanged');
+        'fields could not be properly renamed, structure unchanged');
     return
 end
 

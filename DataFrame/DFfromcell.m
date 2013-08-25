@@ -1,35 +1,46 @@
-function S = DFfrommat(M,header)
-% DFFROMMAT
-%    Converts a nxm matrix M and mx1 cell array header of strings
+function S = DFfromcell(C,header)
+% DFFROMCELL
+%    Converts a nxm cell array C and mx1 cell array header of strings
 %    to a 1x1 structure S of m fields called each of which is nx1
 %
-%    S = DFfrommat(M,header)
+%    S = DFfromcell(C,header)
 %
 % parameters
 % ----------------------------------------------------------------
-%    "M"      - a matrix of type numeric or logical
+%    "C"      - a cell array whose columns contain uniformly strings,
+%               numbers or logicals
 %    "header" - a cell array of strings of column headers
 % output
 % ----------------------------------------------------------------
-%    "S"      - a 1x1 structure of arrays of any type
+%    "S"      - a data frame
 % ----------------------------------------------------------------
 %
 %    Hy Carrinski
 %    Broad Institute
-%    Created 05Mar2008
 
 % QC
-[n, m] = size(M);
+[n, m] = size(C);
 if nargin > 1
     assert(m == numel(header) && iscellstr(header), 'ccbr:BadInput', ...
-        'DFfrommat requires a matrix and a cell array of strings as input');
+        'DFfromcell requires a matrix and a cell array of strings as input');
 else
     header = generate_headers(m);
 end
 
+assert(iscell(C),'ccbr:BadInput','first input of DFfromcell required to be a cell array');
+
 % Generate structure
 for i = 1:numel(header)
-    S.(header{i}) = M(:,i);
+    if iscellstr(C(:,i))
+        S.(header{i}) = C(:,i);
+    else
+        try
+            S.(header{i}) = cell2mat(C(:,i));
+        catch
+            errMsg = sprintf('please check format within column %0.0f of input');
+            error('ccbr:BadInput',errMsg);
+        end
+    end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

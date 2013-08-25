@@ -10,6 +10,8 @@ function err = DFwrite(S, filename, filedir, options, isWithNaN)
 %     "filename"  -  char array of the filename or path to the file
 %     "filedir"   -  char array of the directory containing the file
 %     "options"   -  a structure with a printf-style format string per field
+%                    specific named fields of options include:
+%                    "defaultFmt", "isWithNaN", "isWriteHeader", "isRobust"
 %     "isWithNaN" -  boolean to determine whether NaNs are output as
 %                    "" (=false) or "NaN" (default=true)
 %     "isRobust"  -  boolean (default=false) to determine whether writing
@@ -35,7 +37,6 @@ function err = DFwrite(S, filename, filedir, options, isWithNaN)
 %         Currently not permitted
 %
 %     Hy Carrinski
-%     Based on foutput_v2  28 June 2006
 %     requires conv2str.m cell2delim.m
 
 %%
@@ -55,14 +56,33 @@ elseif not(isstruct(options))
    error('ccbr:BadInput',['"options" is required to be ' ...
          'a structure with a format string per field']);
 end
+if isfield(options,'isWriteHeader')
+    isWriteHeader = options.isWriteHeader;
+else
+    isWriteHeader = true;
+end
+valueConflictMsg = @(str) ...
+    sprintf('conflict in value of parameter %s, please check inputs',str);
 if nargin < 5 || isempty(isWithNaN)
-   isWithNaN = true;
+    if isfield(options,'isWithNaN')
+        isWithNaN = options.isWithNaN;
+    else
+        isWithNaN = true;
+    end
+elseif isfield(options,'isWithNaN') && not(isequal(options.isWithNaN,isWithNaN))
+     error('ccbr:BadInput', valueConflictMsg('isWithNaN')); 
 end
 if nargin < 6 || isempty(isRobust)
-    isRobust = false;
+    if isfield(options,'isRobust')
+        isRobust = options.isRobust;
+    else
+        isRobust = false;
+    end
+elseif isfield(options,'isRobust') && not(isequal(options.isRobust,isRobust))
+     error('ccbr:BadInput', valueConflictMsg('isRobust')); 
 end
 % Ensure that structure is ready for writing
-[okayToWrite numRows] = DFverify(S,true,true);
+[okayToWrite,numRows] = DFverify(S,true,true);
 if okayToWrite < 1
     switch okayToWrite
       case  0
@@ -88,19 +108,23 @@ fmts = getformat(S,propertyNames,options);
 
 % Write the file
 fid1= fopen([filedir filename],'Wb');
-fprintf(fid1,propNamesFmt,propertyNamesFmtd{:});
+if isWriteHeader
+    fprintf(fid1,propNamesFmt,propertyNamesFmtd{:});
+end
 
-if DFisnum(S) && isWithNaN     % FAST
+if numRows < 1                 % TRIVIAL
+    warning('ccbr:BadInput','Empty file written.')
+elseif DFisnum(S) && isWithNaN  % FAST
     % convert DF to a matrix and write to file
     fullFmt      = sprintf('%s\\t',fmts{:}); % preserve \t
-    fullFmt(end) = 'n';        % replace final tab with new line
+    fullFmt(end) = 'n';         % replace final tab with new line
     fprintf(fid1,fullFmt,transpose(DFtomat(S)));
-elseif not(isRobust)           % WELL
+elseif not(isRobust)            % WELL
     % preallocate matrix, fill matrix with strings, write to file
-    [M isNumIdx] = allocmat(S,fmts,isWithNaN);
+    [M,isNumIdx] = allocmat(S,fmts,isWithNaN);
     M = fillmat(S,M,propertyNames,fmts,isNumIdx,numRows,1,isWithNaN);
     fprintf(fid1,'%s',M);
-else                           % RIGHT
+else                            % RIGHT
     % write each line of file by recursively converting to a string
     for lineNo = 1:numel(S.(propertyNames{end}))
         fprintf(fid1,'%s\n',writeline(S,lineNo,propertyNames,fmts));
@@ -121,7 +145,7 @@ function str = writeline(S,lineNo,propertyNames,fmts)
 %
 %    str = writeline(S,lineNo,propertyNames,fmts)
 %
-%    recursivelty concatenate each line of output into a string
+%    recursively concatenate each line of output into a string
 % 
     vertStr = cell(numel(propertyNames),1);
     for i = 1:numel(propertyNames)
@@ -136,6 +160,7 @@ function header = headerunrepl(header)
 %    ensures that all fields of header are the same as they
 %    were in an input file
     header = regexprep(header,'JPJ','/' );
+    header = regexprep(header,'KPK','#' );
     header = regexprep(header,'NPN',':' );
     header = regexprep(header,'QPQ','\.');
     header = regexprep(header,'VPV',')' );
@@ -179,7 +204,7 @@ function fmts = getformat(S,propNames,options)
     % assign format for each field
     for i = 1:numFmts
         currName = propNames{i};
-        if numel(strmatch(currName,optFields,'exact')) == 1
+        if isscalar(strmatch(currName,optFields,'exact'))
              fmts{i} = options.(currName);
         elseif isint(S.(currName))
              fmts{i} = '%.0f';      % keep all digits of any "de facto" integers
@@ -189,6 +214,35 @@ function fmts = getformat(S,propNames,options)
             fmts{i} = defaultFmt;   % e.g., decimal
         end
     end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function flagTest = isint(inMat)
+% ISINT
+%        test matrix for containing only integer values of
+%        type integer, double, single or logical
+%
+%    flagTest = isint(inMat)
+%
+% parameters
+%----------------------------------------------------------------
+%    "inMat"     - any matrix
+% output
+%----------------------------------------------------------------
+%    "flagTest"  - logical reporting whether matrix passes test
+%----------------------------------------------------------------
+%Based on isindex
+
+%test for positive integers
+if isinteger(inMat)==true     %actual integer data type
+    flagTest = true;
+elseif islogical(inMat)
+    flagTest = true;
+elseif isnumeric(inMat) && ...
+       isequalwithequalnans(inMat,fix(inMat))  %de-facto integers
+    flagTest = true;
+else
+    flagTest = false;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [M isNumIdx]= allocmat(S,fmts,isWithNaN)
@@ -220,7 +274,7 @@ function [M isNumIdx]= allocmat(S,fmts,isWithNaN)
             
         end
     end 
-    M = repmat(nullchar, 1, strSize + numSize); % one big row vector
+    M = repmat(nullchar, 1, strSize + numSize); % one long row vector
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function M = fillmat(S,M,header,fmts,isNumIdx,numRows,currRow,isWithNaN);
@@ -279,7 +333,7 @@ function M = rmnanstr(M);
     if strcmp(M(end:end-3),sprintf('\t%g',nan)) || ...  % last element
        strcmp(M(end:end-3),sprintf('\n%g',nan)) || ...
        ( numel(M) == 3 && strcmp(M(end:end-2),sprintf('%g',nan)) )
-        nanLocs{2} = numel(M)-3;            % since numel('NaN') == 3
+        nanLocs{2} = sizeAlloc-3;            % since numel('NaN') == 3
     else                      % last element within preallocated matrix
         nanLocs{2} = strfind(M,[sprintf('\t%g',nan) char(0)]);
     end

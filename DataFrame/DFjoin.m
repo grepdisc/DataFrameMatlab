@@ -34,11 +34,9 @@ function [S1 unJoinedIdx1 unJoinedIdx2] = ...
 %
 %    Hy Carrinski
 %    Broad Institute
-%    Based on fJoin_v2 27 June  2007
-%    Requires DFread DFindex DFgetgood makevert notindex
+%    Requires DFread DFindex DFgetgood makevert notindex num2colidx
 
 % Check input arguments and generate structures S1 and S2
-
 [S1 numRows         ] = DFgetgood(file1);
 [S2 numRowsJoinFile ] = DFgetgood(file2);
 clear file1 file2;
@@ -113,19 +111,36 @@ if any(not(ismember(keepNames,fields2)))
              cell2delim(fields2(missNameIdx))]);
 end
 
-% Build index for first file, then use those values to index second file
-[idxS1 NamesS1 spIdxS1] = DFindex(S1,joinOnNames,[],[],[],inclNaNEmpty);
+NamesS1 = DFvalues(DFkeepcol(S1,joinOnNames),inclNaNEmpty);
+NamesS2 = DFvalues(DFkeepcol(S2,joinOnNames),inclNaNEmpty);
+for i = 1:numel(joinOnNames)
+    currName = joinOnNames{i};
+    NamesS1.(currName) = NamesS1.(currName)(ismember(NamesS1.(currName), ...
+                                                     NamesS2.(currName)));
+    if isempty(NamesS1.(currName))
+        warning('ccbr:BadJoin',['Joined failed because join files share zero values ' ...
+                                'in field "' currName '"' ]);
+        unJoinedIdx1 = num2colidx(numRows);
+        unJoinedIdx2 = num2colidx(numRowsJoinFile);
+        return
+    end
+end
+
+% Use only matching values to index each data frame
+[idxS1 NamesS1 spIdxS1] = DFindex(S1,joinOnNames,[],NamesS1,[],inclNaNEmpty);
 [idxS2 NamesS2 spIdxS2] = DFindex(S2,joinOnNames,[],NamesS1,[],inclNaNEmpty);
 
+% Matching values are the same before and after indexing
+assert(isequalwithequalnans(NamesS1,NamesS2));
+
 if isempty(idxS2)
-    % This conditional added for sparse implementation
     warning('ccbr:BadJoin','Joined failed because join files share zero matching indices');
-    unJoinedIdx1 = notindex(fromS1,numRows); %commented at bottom
-    unJoinedIdx2 = notindex(fromS2,numRowsJoinFile);
+    unJoinedIdx1 = num2colidx(numRows);
+    unJoinedIdx2 = num2colidx(numRowsJoinFile);
     return
 end
 
-if any(makevert( cellfun('prodofsize',idxS2) > 1 ))
+if any(makevert(cellfun('prodofsize',idxS2) > 1 ))
    switch lower(joinWhich)
      case {'','empty'}
        error('Join file has redundant indexing');

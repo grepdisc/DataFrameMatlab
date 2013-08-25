@@ -1,8 +1,8 @@
-function [isNum numRows] = DFisnum(S)
+function [isNum, numRows] = DFisnum(S)
 % DFISNUM
 %        Test whether input is a DF with fields of type numeric or logical
 %
-%     [isNum numRows] = DFisnum(S)
+%     [isNum, numRows] = DFisnum(S)
 % parameters
 % ----------------------------------------------------------------
 %    "S"        - a 1x1 structure of arrays of any type
@@ -16,8 +16,10 @@ function [isNum numRows] = DFisnum(S)
 %   Hy Carrinski
 %   Broad Institute
 
-isNum   = true;
-flds    = fieldnames(S);
+isNum = true;
+assert(isstruct(S) && isscalar(S), 'ccbr:BadInput', ...
+    'Input must be a DF (1x1 structure of arrays)');
+flds = fieldnames(S);
 size1st = size(S.(flds{1}));
 for n = 1:numel(flds)
     sizeNth = size(S.(flds{n}));

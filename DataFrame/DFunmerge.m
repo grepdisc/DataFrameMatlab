@@ -19,7 +19,8 @@ function S = DFunmerge(S,fields,delim)
 %     Broad Institute
 %     Depends on enumitems.m
 
-if nargin < 2 || not(isstruct(S)) || not( iscellstr(fields) || ischar(fields) )
+if nargin < 2 || not(isstruct(S)) || isempty(fields) || ...
+    not(iscellstr(fields) || ischar(fields))
     error('ccbr:BadInput','Please check inputs for DFunmerge');
 elseif nargin < 3 || not(ischar(delim))
     delim = ';';

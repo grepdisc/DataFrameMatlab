@@ -26,33 +26,32 @@ function [isComplete numRows] = DFverify(S,isColumnar,checkType)
 % 
 %    Hy Carrinski
 %    Broad Institute
-%    Based on qcRows 2008 March 24
 
 if nargin < 2 || isempty(isColumnar)
     isColumnar = false;
 end
-if not(isstruct(S)) || numel(S) > 1 
-    error('ccbr:BadInput','Input must be a DF (1x1 structure of arrays)');
-end
+assert(isstruct(S) && isscalar(S), 'ccbr:BadInput', ...
+    'Input must be a DF (1x1 structure of arrays)');
 if nargin < 3 || isempty(checkType)
-    checkType = false;
+    checkType = false;   % IS THIS IMPLEMENTED?
 end
-
 % Argument checking complete
+
 isComplete = 1;
 if isempty(S)
     numRows = 0;
     return
 end
-flds       = fieldnames(S);
-size1st    = size(S.(flds{1}));
-for n = 1:numel(flds)
-    sizeNth = size(S.(flds{n}));
-    if not(checkType) || islogical(S.(flds{n})) || ...
-        isnumeric(S.(flds{n})) || iscellstr(S.(flds{n})) 
-        if isequal(size1st,sizeNth)                 % same size
+flds = fieldnames(S);
+size_1st = size(S.(flds{1}));
+for k = 1:numel(flds)
+    currVec = S.(flds{k});
+    size_kth = size(currVec);
+    if not(checkType) || not(isempty(currVec)) || islogical(currVec) || ...
+        isnumeric(currVec) || iscellstr(currVec) 
+        if isequal(size_1st,size_kth)                 % same size
             if not(isColumnar) || ...
-               isequal( size1st(1), prod(sizeNth) )
+               isequal(size_1st(1), prod(size_kth))
                 continue;     % success
             else
                 isComplete = -1;
@@ -66,4 +65,8 @@ for n = 1:numel(flds)
     numRows = nan;
     return
 end
-numRows = max(size1st);
+if nnz(size_1st) > 1
+    numRows = max(size_1st);
+else
+    numRows = 0;
+end

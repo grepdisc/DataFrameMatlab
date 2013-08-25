@@ -1,8 +1,8 @@
-function [SNew errmsg] = DFtostruct(S,isReverse)
+function [SNew, errmsg] = DFtostruct(S,isReverse)
 % DFTOSTRUCT
 %       Converts a data frame to an array of structures
 %
-%    [SNew errmsg] = DFtostruct(S,isReverse)
+%    [SNew, errmsg] = DFtostruct(S,isReverse)
 % parameters
 % ----------------------------------------------------------------
 %    "S"         -  a DF or a structure array
@@ -15,7 +15,6 @@ function [SNew errmsg] = DFtostruct(S,isReverse)
 % 
 %    Hy Carrinski
 %    Broad Institute
-%    Based on structConvert 28 June 2006
 
 fields = fieldnames(S);
 
@@ -27,7 +26,7 @@ end
 %try
     if not(isReverse)
         % DF --> array of structures
-        [isOkay numRows] = DFverify(S);
+        [isOkay, numRows] = DFverify(S);
         % initialize output structure
         SNew(numRows) = struct(fields{1},[]);    
         for i = 2:numel(fields)
@@ -54,13 +53,11 @@ end
             currFld = fields{i};
             SNew(1).(currFld) = vertcat(S.(currFld)); 
         end
-        [isOkayNew numRowsNew] = DFverify(SNew);
+        [isOkayNew, numRowsNew] = DFverify(SNew);
     end
-    if not(isequal(numRows,numRowsNew))
-       errmsg = sprintf(['Could not convert S: S had %g rows and SNew ' ...
-                'had %g rows'], numRows, numRowsNew);
+    assert(isequal(numRows,numRowsNew), 'ccbr:BadInput', sprintf(['Cannot ' ...
+        'convert S: S had %g rows and SNew had %g rows'], numRows, numRowsNew);
      
-       error('ccbr:BadInput',errmsg);
     end
     errmsg ='';
 %catch

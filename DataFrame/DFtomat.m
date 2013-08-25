@@ -10,7 +10,7 @@ function [M header] = DFtomat(S)
 %    "S"      - a data frame
 % output
 % ----------------------------------------------------------------
-%    "M"      - a matrix of type numeric or logical
+%    "M"      - a matrix of type double
 %    "header" - a cell array of strings (column headers)
 % ----------------------------------------------------------------
 %
@@ -18,13 +18,13 @@ function [M header] = DFtomat(S)
 %    Broad Institute
 
 % QC
-[isNum numRows] = DFisnum(S);
-assert(isNum==true,'ccbr:BadInput', ...
+[isNum, numRows] = DFisnum(S);
+assert(isNum==true, 'ccbr:BadInput', ...
     'DFtomat requires a data frame of numeric or logical arrays as input');
 
 % Generate header
 header = fieldnames(S);
-M      = nan( numRows, numel(header) );
+M      = nan(numRows, numel(header));
 for i = 1:numel(header)
-    M(:,i) = S.(header{i});
+    M(:,i) = double(S.(header{i}));
 end

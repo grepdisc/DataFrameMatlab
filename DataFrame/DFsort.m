@@ -1,8 +1,8 @@
-function [Data sortIndex rowFreq] = DFsort(Data,fields,isAscendVec,isUniq)
+function [Data, sortIndex, rowFreq] = DFsort(Data,fields,isAscendVec,isUniq)
 % DFSORT
 %       Sorts a structure of arrays for any number of fields
 %
-%    [SortedData sortIndex rowFreq] = DFsort(Data,fields,isAscendVeci,isUniq)
+%    [SortedData, sortIndex, rowFreq] = DFsort(Data,fields,isAscendVec,isUniq)
 %
 % parameters
 %----------------------------------------------------------------
@@ -45,16 +45,20 @@ if nargin < 4 || isempty(isUniq)
 end
 
 % Make sure fields is a cell array of strings
-assert(all(cellfun(@(x) ischar(x), fields)), ...
-    'ccbr:BadInput','Cell array fields must contain strings');
+if any(cellfun(@(x) not(ischar(x)), fields))
+    error('ccbr:BadInput','Cell array fields must contain strings');
+end
 
 % Check that fields are present
-assert(all(isfield(Data,fields)), ...
-    'ccbr:BadInput','Some requested fields are not present in input');
+if not(all(isfield(Data,fields)))
+    error('ccbr:BadInput','Some requested fields are not present in Data');
+end
 
 % Ensure that every column is 1D and has an equal number of rows
 [isOkay numRows] = DFverify(Data,true);
-assert(isOkay == 1,'ccbr:BadInput','fields must be arrays of size N x 1');
+if isOkay < 1
+    error('ccbr:BadInput','fields in Data must be arrays of size N x 1');
+end
 % QC is complete
 
 % Ready to sort
@@ -62,7 +66,7 @@ numFields   = numel(fields);
 keyIdx      = zeros(numRows,numFields);
 isEqualNaNs = true;
 for i = 1:numFields
-    [ tmpB tmpI keyIdx(:,i) ] = uniquenotmiss(Data.(fields{i}), isEqualNaNs);
+    [ tmpB, tmpI, keyIdx(:,i) ] = uniquenotmiss(Data.(fields{i}), isEqualNaNs);
 end
 
 % Do math to determine sort direction
@@ -71,14 +75,14 @@ sortDirection = (double(isAscendVec)*2 - 1).*(1:numFields)';
 % Keep all rows (by default)
 if not(isUniq)
     % Find sort order using rows of matrix of unique values
-    [tmpS sortIndex] = sortrows(keyIdx,sortDirection);
+    [tmpS, sortIndex] = sortrows(keyIdx,sortDirection);
     if nargout == 3
         rowFreq  = ones(numRows,1);
     end
 else
-    [keyIdx uniqIdx freqIdx] = unique(keyIdx,'rows','first');
+    [keyIdx, uniqIdx, freqIdx] = unique(keyIdx,'rows','first');
     % Find sort order using rows of matrix of unique values
-    [tmpS uniqSortIdx] = sortrows(keyIdx,sortDirection);
+    [tmpS, uniqSortIdx] = sortrows(keyIdx,sortDirection);
     sortIndex  = uniqIdx(uniqSortIdx);
     % count row frequency
     if nargout == 3

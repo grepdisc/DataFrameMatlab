@@ -1,6 +1,5 @@
 function S = DFcat(S,varargin)
 % DFCAT
-%     S = DFcat(S,Sadd,isCheck)
 %     S = DFcat(S,Sadd1,Sadd2,Sadd3,...,Saddk)
 %
 %     Concatenates rows of one data frame onto another data frame
@@ -9,20 +8,18 @@ function S = DFcat(S,varargin)
 %----------------------------------------------------------------
 %    "S"       -  DF, possibly empty (e.g., "struct([])"), to which to append rows
 %    "Sadd"    -  DF containing rows to append
-%    "isCheck" -  boolean (default = true) to confirm integrity of Sadd (deprecated)
 % outputs
 %----------------------------------------------------------------
 %    "S"       -  DF including all rows from inputs
 %----------------------------------------------------------------
+%    Note: syntax S = DFcat(S,Sadd,isCheck) is not longer supported
+%          since the integrity of "Sadd" is always checked
 % 
 % Concatenates rows from DF Sadd onto DF S
 % Hy Carrinski
 % Broad Institute
-% Based on catStruct 02 Apr 2007
 
-if not(isstruct(S))
-   error('ccbr:BadInput','bad inputs for DFcat');
-end
+assert(isstruct(S),'ccbr:BadInput','bad inputs for DFcat');
 
 if nargin < 2
     warning('ccbr:BadInput','DFcat expects 2 inputs, returning original data frame');
@@ -31,15 +28,13 @@ end
 
 numToCat = numel(varargin);
 isAllStruct  = cellfun(@isstruct,varargin);
-if (numToCat > 1) && not(isAllStruct(2))
+if numToCat > 1 && not(isAllStruct(2))
     isAllStruct(2) = [];
     varargin{2}    = [];
-    numToCat         = numToCat - 1;
+    numToCat       = numToCat - 1;
 end
 
-if not(all(isAllStruct)) 
-   error('ccbr:BadInput','bad inputs for DFcat');
-end
+assert(all(isAllStruct),'ccbr:BadInput','bad inputs for DFcat');
 
 if (numToCat == 1)
    S = DFsinglecat(S,varargin{1});
@@ -63,22 +58,19 @@ function S = DFsinglecat(S,Sadd)
     fields1 = fieldnames(S);
     fields2 = fieldnames(Sadd);
 
-    if not(isequal( numel(fields1),numel(fields2) )) || ...
-       not(all( ismember(fields1,fields2) ))
-       error('Fields between S and Sadd must match');
-    end
+    assert(isequal(numel(fields1), numel(fields2)) && ...
+       all(ismember(fields1,fields2)),'ccbr:BadInput', ...
+       'Fields between S and Sadd must match');
 
     % Ensure that each column is 1D and has an equal number of rows
     isOkay = DFverify(Sadd,true);
-    if isOkay < 1
-        error('ccbr:NotDF','Each field must be an equal length column vector');
-    end
+    assert(isOkay > 0, 'ccbr:NotDF','Each field must be an equal length column vector');
     % passed QC
 
     % Perform concatenation
     for i = 1:numel(fields1)
        currFld = fields1{i};
-       S.(currFld) = cat(1,S.(currFld),Sadd.(currFld));
+       S.(currFld) = cat(1, S.(currFld),Sadd.(currFld));
     end    
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -89,12 +81,11 @@ function S = DFmultcat(S,CellSadd)
     % Verify inputs and identify empty data frames (zero rows)
     [ isOkayS numRowS ] = DFverify(S,true);
     for i = numel(CellSadd):-1:1
-        [isOkaySadd(i) numRowSadd(i) ] = DFverify(CellSadd{i},true);
+        [isOkaySadd(i), numRowSadd(i)] = DFverify(CellSadd{i},true);
     end
     % Ensure that each column is 1D and has an equal number of rows
-    if isOkayS < 1 || any(isOkaySadd < 1)
-        error('ccbr:NotDF','Each field must be an equal length column vector');
-    end
+    assert(isOkayS > 0 && all(isOkaySadd > 0), ...
+        'ccbr:NotDF','Each field must be an equal length column vector');
     % passed initial QC
 
     % handle empty CellSadd elements
@@ -116,21 +107,19 @@ function S = DFmultcat(S,CellSadd)
 
     % All empty data frames have been removed
     numToCat = numel(CellSadd);
-    fieldS   = fieldnames(S);
+    cols = fieldnames(S);
     for i = numToCat:-1:1
-        fieldSadd{i} = fieldnames(CellSadd{i});
-        if not(isequal( numel(fieldS),numel(fieldSadd{i}) )) || ...
-            not(all( ismember(fieldS,fieldSadd{i}) ))
-            error('ccbr:BadInput', ...
+        appendCols = fieldnames(CellSadd{i});
+        assert(isequal(numel(cols), numel(appendCols)) && ...
+           all(ismember(cols,appendCols)),'ccbr:BadInput', ...
             'Concatenation only among data frames with matching fields');
-        end
     end
     % passed final QC
 
     % Perform concatenation
-    for i = 1:numel(fieldS)
+    for i = 1:numel(cols)
         holder      = cell(numToCat,1);
-        currFld     = fieldS{i};
+        currFld     = cols{i};
         for j = 1:numToCat
             holder{j} = CellSadd{j}.(currFld);
         end

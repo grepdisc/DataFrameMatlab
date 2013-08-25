@@ -1,12 +1,12 @@
-function [dataIndex Values sparseIdx] = ...
+function [dataIndex, Values, sparseIdx] = ...
     DFindex(Data,fields,excludeIdx,Values,isND,inclNaNEmpty)
 % DFINDEX
 %        Generates an index for a structure of arrays for any number of fields
 %
 %    [dataIndex ] = DFindex(Data,fields) 
-%    [dataIndex Values ] = DFindex(Data,fields) 
-%    [dataIndex Values sparseIdx] = DFindex(Data,fields) 
-%    [dataIndex Values sparseIdx] = ...
+%    [dataIndex, Values ] = DFindex(Data,fields) 
+%    [dataIndex, Values, sparseIdx] = DFindex(Data,fields) 
+%    [dataIndex, Values, sparseIdx] = ...
 %            DFindex(Data,fields,excludeIdx,Values,isND,inclNaNEmpty) 
 %
 % parameters
@@ -14,7 +14,7 @@ function [dataIndex Values sparseIdx] = ...
 %    "Data"         - a data frame
 %    "fields"       - a cell array of field names in "Data"
 %    "excludeIdx"   - an optional list of indices to remove from consideration
-%    "Values"       - a structure to override the output "Values" 
+%    "Values"       - a structure of fields of alphanumerically sorted unique values by which to index 
 %    "isND"         - boolean whether dataIndex is N-dim (default=1) or linear 
 %    "inclNaNEmpty" - boolean whether to ignore NaNs and empty strings (default=0)
 %                     or to set all NaNs equal and all empty strings equal (=1)
@@ -26,7 +26,7 @@ function [dataIndex Values sparseIdx] = ...
 %                  if sparseIdx is defined (nargout=3), then dataIndex is linear,
 %                  has zero empty cells, and requires sparseIdx for indexing
 %    "Values"    - a structure containing field names from "fields" and containing
-%                  unique values from Data.(fieldname) in ascending order
+%                  unique values from Data.(fieldname) in alphanumerically ascending order
 %    "sparseIdx" - a M by N matrix of subscripts. Each row of N values are subscripts
 %                  into a unique coordinate of N-Dimensional dataIndex. M is the
 %                  number of non-empty coordinates of dataIndex
@@ -43,24 +43,16 @@ function [dataIndex Values sparseIdx] = ...
 
 
 % QC the input
-if nargin < 2 || isempty(fields)
-    error('ccbr:BadInput','DFindex requires at least two inputs');
-end
-if not(iscellstr(fields))
-   if ischar(fields)
-        fields = cellstr(fields); 
-   else
-       error('ccbr:BadInput','fields must be a cell array');
-   end
-end
+assert(nargin >= 2 && not(isempty(fields)), ...
+    'ccbr:BadInput','DFindex requires at least two inputs');
+
 % Allow index to match other data structure
 if nargin < 4 || isempty(Values) || ~isstruct(Values)
     isInputValues = 1;
 else
     isInputValues = 0;
-    if not(all(structfun(@issorted,Values)))
-        error('ccbr:BadInput','Values must be sorted in ascending order');
-    end
+    assert(all(structfun(@issorted,Values)),'ccbr:BadInput',...
+        'Values must be sorted in ascending order');
 end
 % Allow single dimensional output (default is multidimensional)
 if nargin < 5 || isempty(isND)
@@ -71,20 +63,18 @@ if nargin < 6 || isempty(inclNaNEmpty)
 end
 
 % Make sure fields is a cell array of strings
-if not(iscellstr(fields))
-    error('ccbr:BadInput','Cell array fields must contain strings');
+if ischar(fields)
+    fields = cellstr(fields); 
 end
+assert(iscellstr(fields),'ccbr:BadInput','Cell array fields must contain strings');
 
 % Check that fields are present
-if any(not(isfield(Data,fields)))
-    error('ccbr:BadInput','Some requested fields are not present in Data');
-end
+assert(all(isfield(Data,fields)),'ccbr:BadInput', ...
+    'Some requested fields are not present in Data');
 
 % Ensure that every column is 1D and has an equal number of rows
-[isOkay numRows] = DFverify(Data,true);
-if isOkay < 1
-    error('ccbr:BadInput','Fields in Data must be arrays of size N x 1');
-end
+[isOkay, numRows] = DFverify(Data,true);
+assert(isOkay == 1,'ccbr:BadInput','Fields in Data must be arrays of size N x 1');
 
 %Find class of each field to be able to exclude some rows
 numFields = numel(fields);
@@ -108,7 +98,7 @@ else
          Values.(fields{i}) = uniquenotmiss(Values.(fields{i}),inclNaNEmpty);
     end
     if not(isequalwithequalnans(Values,UnsortedValues))
-        warning('ccbr:Paradox','elements in DF Values sorted by DFindex');
+        warning('ccbr:BadInput','elements in structure Values re-ordered by DFindex');
     end
     Values = orderfields(Values,fields);
     if not(isequalwithequalnans(Values,UnsortedValues))
@@ -118,75 +108,82 @@ end
 
 % Generate vectors of indices into Values ( "keys" ) for each
 % pair ("field name", "unique value") from Data
-% tmpB must contain the unique members from Values.(fields{i})
+% vals must contain the unique members from Values.(fields{i})
 % in the same order
 % We want keyIdx to contain numbers that correctly map
 % to an index of Values.(Field)
 keyIdx = zeros(numRows,numFields);
 for i = 1:numFields
-    [ tmpB tmpI tmpJ ] = uniquenotmiss(Data.(fields{i}),inclNaNEmpty);
-    matchB             = ismember(tmpB,Values.(fields{i}));
-    % remove values from tmpB and tmpI
-    tmpB(not(matchB))  = [];
-    tmpI(not(matchB))  = [];
-    matchValInt        = find(ismember(Values.(fields{i}),tmpB));
-    matchBInt          = double(matchB);
-    % because tmpB and Values are both sorted in ascending order
-    matchBInt(matchB)  = matchValInt;
-    % pad first element of matchBInt (for tmpJ == 0)
-    matchBInt          = [0; matchBInt];
-    % offset tmpJ by one ( min(tmpJ+1) == 1 ) and index into
-    keyIdx(:,i)        = matchBInt(tmpJ+1);    
+    [ vals tmpI origIdx ] = uniquenotmiss(Data.(fields{i}),inclNaNEmpty);
+    matchIdx1             = ismember(vals,Values.(fields{i}));
+    if inclNaNEmpty && isnumeric(vals) && any(isnan(Values.(fields{i})))
+        matchIdx1 = or(matchIdx1,isnan(vals));
+    end
+    % remove non-indexed unique values from vals
+    vals(not(matchIdx1))  = [];
+    tmpI = [];
+    matchIdx2             = ismember(Values.(fields{i}),vals);
+    if inclNaNEmpty && isnumeric(vals) && any(isnan(Values.(fields{i})))
+        matchIdx2 = or(matchIdx2,isnan(Values.(fields{i})));
+    end
+    idxIntoValues            = zeros(size(matchIdx1));
+    % because vals and Values are both sorted in ascending order
+    idxIntoValues(matchIdx1) = find(matchIdx2);
+    % pad first element of idxIntoValues (for origIdx == 0)
+    idxIntoValues            = [0; idxIntoValues];
+    % offset origIdx by one ( min(origIdx+1) == 1 ) and index into
+    keyIdx(:,i)              = idxIntoValues(origIdx+1);    
 end
 
 % flag rows of keyIdx for which any element is 0.
 goodRows                = all(keyIdx,2); % a logical vector
 keyIdx(not(goodRows),:) = 0;
 
-% Row vector containing size of each dimension (input for sub2ind)
-sizFullIdx = structfun(@numel,Values)';
-
-% Ensure that the size input to a function such
-% as "cell" has greater than one element
-if numel(sizFullIdx) == 1
-    sizFullIdx = [sizFullIdx 1];
-end
-
 % Reverse columns so UNIQUE sorts rows properly
-[B,I,J] = unique(keyIdx(:,end:-1:1),'rows');
-% B contains the unique rows of keyIdx
-% J has the index of B in the order of keyIdx (i.e., group id for rows of keyIdx)
-% i.e., B(J,:) equals keyIdx
+[sparseIdx,I,J] = unique(keyIdx(:, end:-1:1), 'rows');
+% sparseIdx contains the unique rows of keyIdx
+% J has the index of sparseIdx in the order of keyIdx
+% i.e., group id for rows of keyIdx
+% i.e., sparseIdx(J,:) equals keyIdx
 
-% If rows contain any NaN or empty strings, B(1,:) equals 0
+% If rows contain any NaN or empty strings, sparseIdx(1,:) equals 0
 % remove those rows, and make those indices of J to contain 0's
 if not(all(goodRows))
-    B(1,:) = [];
-    I(1,:) = [];
-    J      = J - 1;
+    sparseIdx(1,:) = [];
+    I              = [];
+    J              = J - 1;
 end
-% Check whether B is now empty
-if isempty(B)
+% Check whether sparseIdx is now empty
+if isempty(sparseIdx)
     dataIndex = {};
-    sparseIdx = {};
-    warning('ccbr:EmptyArray','DataIdx is empty');
+    sparseIdx = {};  % UNSURE about {} vs []
+    warning('ccbr:EmptyArray','dataIndex is empty');
     return
 end
 
 % Restore column ordering to match field order
-% and convert matrix to cell array of columns
-cellB = num2cell(B(:,end:-1:1),1);
+sparseIdx = sparseIdx(:, end:-1:1);
 
-% Generate 1-dim list of present indices from full n-dim index
-presentIdx = sub2ind(sizFullIdx,cellB{:});
-% cellB{:} produces a comma separated list
-% this use of sub2ind is similar to the command find
+% Row vector containing size of each dimension and a
+% minimum of two elements
+sizFullIdx = transpose(structfun(@numel, Values));
+if isscalar(sizFullIdx)
+    sizFullIdx = [sizFullIdx, 1];
+end
+
+% Generate single dimensional list of present indices
+% from full n-dim index
+dimFactor = [1, cumprod(sizFullIdx(1:end-1))];
+presentIdx = sparseIdx(:,1);
+for i = 2:size(sparseIdx,2)
+    presentIdx = presentIdx + (sparseIdx(:,i) - 1) * dimFactor(i);
+end
 
 % Modify J to hold indices to full n-dim index
 J(goodRows) = presentIdx(J(goodRows));
 
 % Sort J into the same order as presentIdx
-[ idGroup sortIdxJ ] = sort(J,'ascend');
+[idGroup, sortIdxJ] = sort(J,'ascend');
 
 % Remove rows for which J is 0
 sortIdxJ(idGroup==0) = [];
@@ -196,10 +193,13 @@ idGroup( idGroup==0) = [];
 sizGroup = diff(find([1; diff(idGroup); 1])); 
 
 % Convert the index into the unsorted J to a cell array
-dataList = mat2cell(sortIdxJ,sizGroup);
+dataList = mat2cell(sortIdxJ, sizGroup);
 
 % Check whether sparse case
-if nargout < 3
+if nargout == 3
+    %sparse case
+    dataIndex = dataList;
+else
     % Initialize index
     dataIndex = cell(prod(sizFullIdx),1);
 
@@ -211,7 +211,4 @@ if nargout < 3
     if isND
         dataIndex = reshape(dataIndex,sizFullIdx);
     end
-else
-    dataIndex = dataList;
-    sparseIdx = B(:,end:-1:1);
 end

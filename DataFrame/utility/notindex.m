@@ -1,8 +1,8 @@
-function idx = notindex(idx,len)
+function idx = notindex(idx, len)
 % NOTINDEX
 %    notindex generates all indices into a matrix not present in "index" 
 %
-%       idx = notindex(index,length)
+%       idx = notindex(index, length)
 %
 % parameters
 %----------------------------------------------------------------
@@ -10,7 +10,7 @@ function idx = notindex(idx,len)
 %    "length" - the number of elements in the matrix
 % outputs
 %----------------------------------------------------------------
-%    "index"  - a vector of positive indices
+%    "index"  - a column vector of positive indices
 %----------------------------------------------------------------
 %
 %    Hy Carrinski
@@ -18,20 +18,17 @@ function idx = notindex(idx,len)
 %    Created  16 July  2009
 
 if isempty(idx)
-   idx = num2colidx(len);
+   idx = transpose(1:len);
 elseif islogical(idx) || ...               % binary
-       ( isnumeric(idx) && isequal(nnz(idx),nnz(idx==1)) ) 
-    if isequal( numel(idx), len)
-        idx = find(not(idx));
-    else
-        error('ccbr:BadInput',[ '"index" is of type logical, '...
-                'so it must have "length" elements']);
-    end
+       (isnumeric(idx) && isequal(nnz(idx), nnz(idx == 1))) 
+    assert(isequal(numel(idx), len), 'ccbr:BadInput', [ '"index" is of ' ...
+        'type logical, so it must have "length" elements']);
+    idx = find(not(idx));
 elseif isnumeric(idx) && ...               % index
-       ( max(idx(:)) <= len ) && ...
-       ( min(idx(:)) >= 1 ) && ...
-       ( isinteger(idx) || isequal(idx,fix(idx)) )
-    bits      = true(len,1);
+       max(idx(:)) <= len && ...
+       min(idx(:)) >= 1 && ...
+       (isinteger(idx) || isequal(idx, fix(idx)))
+    bits      = true(len, 1);
     bits(idx) = false;
     idx       = find(bits);
 else

@@ -9,12 +9,12 @@ function str = cell2delim(c,delim)
 %    "c"        - an array of cells containing strings or numbers
 %    "delim"    - a multi character delimiter or printf string to
 %                 use as a delimiter (default is a single space).
-%                 Delimiter will be directly copied to output,
-%                 and NOT converted using sprintf
+%                 delimiter is printed literally and NOT converted
+%                 using sprintf
 % outputs
 %----------------------------------------------------------------
-%    "str"      - a char row vector with the elements of "c" delimited by
-%                 "delim", and without any trailing delimiter
+%    "str"      - a row vector of characters consisting of the
+%                 elements of "c" delimited by "delim"
 %----------------------------------------------------------------
 %
 %    Hy Carrinski
@@ -25,10 +25,8 @@ if nargin < 2
     delim = ' ';
 end
 
-if iscellstr(c) && ischar(delim)
-   c        = vertcat(transpose(c(:)),repmat({delim},1,numel(c)));
-   str      = [ c{:} ];
-   str((end-numel(delim)+1):end) = [];
-else
-   error('ccbr:BadInput','cell2delim works on cell arrays of strings');
-end
+assert(not(isempty(c)) && iscellstr(c) && ischar(delim), ...
+    'ccbr:BadInput','cell arrays of strings is required input');
+c        = vertcat(transpose(c(:)), repmat({delim},1,numel(c)));
+str      = horzcat(c{:});
+str((end-numel(delim)+1):end) = [];

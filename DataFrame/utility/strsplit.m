@@ -17,7 +17,7 @@ function c = strsplit(d,s)
 %    Broad Institute
 %    Required by DFread
 
-if strcmp(class(s), 'cell')
+if iscell(s)
    if numel(s) > 1
       warnStr = 'Only first cell from cell array converted to string';
    else
@@ -26,15 +26,15 @@ if strcmp(class(s), 'cell')
    s = s{1};
    warning('ccbr:BadInput',warnStr);
 end
-if numel(d) ~= 1
-   error('ccbr:BadInput','delimiter must be a single character');
-end
-delimIdx       = find( double(s) == double(d) );
+assert(ischar(s),'ccbr:BadInput','Inputs to strsplit must be of type character');
+assert(isscalar(d) && ischar(d), 'ccbr:BadInput', 'Delimiter must be a single character');
+delimIdx       = find(double(s) == double(d));
 numDelim       = numel(delimIdx);
 numChar        = numel(s); 
 dropShortStart = 0;
 dropShortEnd   = 0;
-c              = cell(1,numDelim+1);
+c              = cell(1, numDelim+1);
+%c              = repmat({''}, 1, numDelim+1);
 if numDelim == 0
    c{1} = s;
    return
