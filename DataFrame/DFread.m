@@ -410,18 +410,25 @@ function [varargout] = findformat(unknownFormats,fid,readLength,fields,isCSV)
 function ColNames = makeknown(ColNames)
     % requires that every leaf node of ColNames is a column vector
     % Make non-redundant lists of formats according to priority
-    strForSure  = ColNames.str.userInput;
-    strLikely   = setdiff(ColNames.str.specific, ColNames.num.userInput);
+    if ~isempty(ColNames.str.userInput)
+        strForSure = ColNames.str.userInput;
+    else
+        strForSure = {};
+    end
+    if ~isempty(ColNames.num.userInput)
+        numForSure = ColNames.num.userInput;
+    else
+        numForSure = {};
+    end
+    strLikely = setdiff(ColNames.str.specific, numForSure);
     strPossibly = setdiff(ColNames.str.general, ...
-                  [ColNames.num.userInput; ColNames.num.specific] );
-
-    numForSure  = ColNames.num.userInput;
-    numLikely   = setdiff(ColNames.num.specific,ColNames.str.userInput);...
+              [numForSure; ColNames.num.specific]);
+    numLikely = setdiff(ColNames.num.specific,strForSure);
     numPossibly = setdiff(ColNames.num.general, ...
-                  [ColNames.str.userInput; ColNames.str.specific] );
-
-    ColNames.str.known = unique([ strForSure; strLikely; strPossibly]);
-    ColNames.num.known = unique([ numForSure; numLikely; numPossibly]);
+              [strForSure; ColNames.str.specific]);
+    disp([strForSure; strLikely; strPossibly]);
+    ColNames.str.known = unique([strForSure; strLikely; strPossibly]);
+    ColNames.num.known = unique([numForSure; numLikely; numPossibly]);
     if any(ismember(ColNames.str.known,ColNames.num.known))
         error('ccbr:BadInputs','Format redundancy');
     end
@@ -443,23 +450,23 @@ function Data = convertformats(rawData,fields)
 %     Created 28 June 2006
 %
 
-Data = struct(fields{1},[]);
-for i = 1:numel(fields)
-    asNum      = str2double(rawData{i});     % conversion
-    nanIdxConv = isnan(asNum);               % converted
-    nanIdxReal = strcmpi('nan',rawData{i});  % explicit
-    % numeric all nans are either empty or written as nan
-    if ( isequal(nanIdxConv, nanIdxReal) || ...
-     all(strcmp('',rawData{i}(nanIdxConv))) )
-        Data.(fields{i})      = asNum;       % formats as double array
-    % Postpone conversion until DataFrame supports char array
-    elseif false && iscellstr(rawData{i}) && ...
-     ( numel(unique(cellfun(@numel,rawData{i}))) == 1 )
-        Data.(Data.fields{i}) = char(rawData{i});
-    else
-        Data.(fields{i})      = rawData{i};  % format remains cell array of strings
+    Data = struct(fields{1},[]);
+    for i = 1:numel(fields)
+        asNum      = str2double(rawData{i});     % conversion
+        nanIdxConv = isnan(asNum);               % converted
+        nanIdxReal = strcmpi('nan',rawData{i});  % explicit
+        % numeric all nans are either empty or written as nan
+        if ( isequal(nanIdxConv, nanIdxReal) || ...
+         all(strcmp('',rawData{i}(nanIdxConv))) )
+            Data.(fields{i})      = asNum;       % formats as double array
+        % Postpone conversion until DataFrame supports char array
+        elseif false && iscellstr(rawData{i}) && ...
+         ( numel(unique(cellfun(@numel,rawData{i}))) == 1 )
+            Data.(Data.fields{i}) = char(rawData{i});
+        else
+            Data.(fields{i})      = rawData{i};  % format remains cell array of strings
+        end
     end
-end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -484,7 +491,7 @@ function [header origHeader]  = makeheader(fid,readLength,numCommLines,robustDel
     numCols  = max(colsPerLine);
     header   = makeheadernames(numCols);
 
-    
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function header = makeheadernames(numCols)
@@ -494,7 +501,7 @@ function header = makeheadernames(numCols)
     part2               = num2str(transpose((1:numCols)));
     part2(part2 == ' ') = '0'; % replace spaces with zeros
     header              = mat2cell([part1 part2],ones(numCols,1));
-    
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function rawData = lineread(fid, formats, numFields, numCommLines,robustDelim,maxLines)
@@ -540,8 +547,8 @@ function header = headerrepl(header)
     header = regexprep(header,'#' ,'KPK');
     header = regexprep(header,':' ,'NPN');
     header = regexprep(header,'\.','QPQ');
-    header = regexprep(header,')' ,'VPV');
-    header = regexprep(header,'(' ,'XPX');
+    header = regexprep(header,'\)' ,'VPV');
+    header = regexprep(header,'\(' ,'XPX');
     header = regexprep(header,'\"','YPY');
     header = regexprep(header,'\ ','ZPZ');
     hdrLength = cellfun(@numel,header);
@@ -600,6 +607,7 @@ function filelength = getfilelength(fid,filepath,maxLines)
 %end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 function formats = csvformatreplace(formats)
 % perform replacements in format string to handle CSV files
     formats = strrep(formats,'%s','%q');
