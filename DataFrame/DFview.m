@@ -1,4 +1,6 @@
 function outCharMat = DFview(S,idx,colWidth,options)
+% DFVIEW
+%        Display rows from a structure
 %
 %     outCharMat = DFview(S)
 %     outCharMat = DFview(S,idx)

@@ -1,7 +1,7 @@
 function [C, header] = DFtocell(S)
-% DFTOcell
+% DFTOCELL
 %       Converts a dataframe with m fields, each of which is nx1,
-%       into a nxm matrix M and mx1 cell array of strings
+%       into a nxm cell array and a mx1 cell array of strings
 %
 %    [C, Header] = DFtocell(S)
 %
