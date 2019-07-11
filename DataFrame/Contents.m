@@ -24,7 +24,7 @@
 %   cell2delim    - concatenate a cell array of strings into a delimited char array
 %   conv2str      - converts any (non-structure) input to a single string,
 %   makevert      - make any dimensional matrix or comma separated list into a column vector
-%   strsplit      - split a string into a cell array based on a single character delimiter
+%   strsplitdf    - split a string into a cell array based on a single character delimiter
 %   uniquenotmiss - find the unique values of a (cell) array (ignore NaN and '')
 %
 % Useful functions
