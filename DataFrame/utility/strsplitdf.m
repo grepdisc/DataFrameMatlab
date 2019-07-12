@@ -1,8 +1,8 @@
-function c = strsplit(d,s)
-% STRSPLIT
+function c = strsplitdf(d,s)
+% STRSPLITDF
 %          split a string into a cell array based on a single character delimiter
 %
-%    c = strsplit(d,s)
+%    c = strsplitdf(d,s)
 %
 % parameters
 %----------------------------------------------------------------

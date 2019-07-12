@@ -59,7 +59,7 @@ function [Data rawData Err origHeader] = DFread(filename,filedir,readLength, ...
 %     how many lines from the file will be used to determine the format of
 %     each column.
 % 
-%     DFread depends on DFverify, strsplit
+%     DFread depends on DFverify, strsplitdf
 %     Broad Institute
 %     Hy Carrinski
 %
@@ -465,7 +465,7 @@ function [header origHeader]  = makeheader(fid,readLength,numCommLines,robustDel
                 'whitespace', '','headerlines',numCommLines);
     for i = 1:numel(linedata{1})
         if not(isempty(linedata{1}{i}))
-            colsPerLine(i) = numel(strsplit(robustDelim, linedata{1}{i}));
+            colsPerLine(i) = numel(strsplitdf(robustDelim, linedata{1}{i}));
         end
     end
     numCols  = max(colsPerLine);
@@ -494,7 +494,7 @@ function rawData = lineread(fid, formats, numFields, numCommLines,robustDelim,ma
     rawArray(:) = {''};
     for i = 1:numel(linedata{1})
         if not(isempty(linedata{1}{i}))
-            oneLine = strsplit(robustDelim, linedata{1}{i}); % good solution
+            oneLine = strsplitdf(robustDelim, linedata{1}{i}); % good solution
             % textscan can drop trailing tab
             % truncates lines possessing more  elements than file's columns
             if not(isempty(oneLine))
@@ -565,7 +565,7 @@ function filelength = getfilelength(fid,filepath,maxLines)
     frewind(fid);
     %else
     %    [wcOkay unixNumRowsStr] = unix(['wc -l ' filepath]);
-    %    filelength              = strsplit(' ',unixNumRowsStr);
+    %    filelength              = strsplitdf(' ',unixNumRowsStr);
     %    if numel(filelength) > 1 && (wcOkay == 0)
     %        filelength = str2double(filelength(1));
     %    else

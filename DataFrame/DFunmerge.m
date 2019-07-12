@@ -17,7 +17,7 @@ function S = DFunmerge(S,fields,delim)
 %----------------------------------------------------------------
 %     Hy Carrinski
 %     Broad Institute
-%     Depends on enumitems.m
+%     Depends on enumitems.m, strsplitdf.m
 
 if nargin < 2 || not(isstruct(S)) || not( iscellstr(fields) || ischar(fields) )
     error('ccbr:BadInput','Please check inputs for DFunmerge');
@@ -50,7 +50,7 @@ end
 
 parsedStr = cell(numRows,numel(fields));
 for i = 1:numel(fields)
-    parsedStr(:,i)  = cellfun(@(x) strsplit(delim,x), ...
+    parsedStr(:,i)  = cellfun(@(x) strsplitdf(delim,x), ...
                       S.(fields{i}),'UniformOutput',false);
 end
 
